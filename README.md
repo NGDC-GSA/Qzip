@@ -4,17 +4,16 @@ An efficient tool for raw genomic FASTQ sequencing data compression and decompre
 
 
 __PROGRAM: Qzip__<br>
-__VERSION: 1.0.0-beta.7__<br>
-__PLATFORM: Linux / macOS__<br>
-__ARCHITECTURE: x86_64__<br>
-__COMPILER: gcc (C99)__<br>
+__VERSION: 1.0.0-beta.9__<br>
+__PLATFORM: Linux / macOS / Windows__<br>
+__ARCHITECTURE: x86_64 / arm64__<br>
+__COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: xiaolong zhang__<br>
 __EMAIL: xiaolongzhang2015@163.com__<br>
 __DATE:   2024-09-09__<br>
-__UPDATE: 2026-07-22__<br>
+__UPDATE: 2026-08-22__<br>
 __DEPENDENCE__<br>
-* __GNU make and gcc__<br>
-* __zlib__<br>
+* __cmake (>= 3.16) and a C99 compiler (gcc / clang)__<br>
 * __pthread__<br>
 
 
@@ -34,36 +33,39 @@ __DEPENDENCE__<br>
 
 ## 2.1 Dependencies
 
-Before building Qzip, ensure the following libraries are installed on your system:
+Building Qzip requires **CMake (>= 3.16)** and a C99 compiler (gcc / clang).
+The required libraries are **vendored** in `external/` and compiled
+statically by CMake, so no system packages are needed:
 
-* **zlib** — required for gzip-compressed file I/O
+* **zlib-ng** (`external/zlibng`) — gzip-compressed file I/O
+* **bzip2** (`external/bzip2`) — BZ2 compressed file support
+* **libdeflate** (`external/libdeflate`) — fast gzip compression
 * **pthread** — required for multi-threading support
-* **libbz2** (optional) — enable BZ2 compressed file support by setting `BZ2_SUPPORT = 1` in the makefile
 
 ## 2.2 Compilation
 
 ```bash
-# Build with debug symbols (default, DEBUG = 1)
-make
+# Release build (default, -O3)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 
-# Build with optimization (release mode)
-# Edit the makefile and set DEBUG = 0, then run:
-make
+# Debug build (with -g -O0 symbols)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
 
 # Clean build artifacts
-make clean
+rm -rf build
 ```
 
-The compiled binary `qzip` will be generated in the current directory.
+The compiled binary `qzip` will be generated in the `build/` directory.
 
 ## 2.3 Build Options
 
-The makefile provides two configurable switches:
-
-| Switch        | Default | Description                                                                        |
-|---------------|---------|------------------------------------------------------------------------------------|
-| `DEBUG`       | `0`     | `1`: compile with `-g -O0` for debugging;<br/> `0`: compile with `-O3` for release |
-| `BZ2_SUPPORT` | `0`     | `1`: enable BZ2 format support (adds `-lbz2`);<br/> `0`: BZ2 support disabled      |
+| Option                          | Default   | Description                                                                        |
+|---------------------------------|-----------|------------------------------------------------------------------------------------|
+| `CMAKE_BUILD_TYPE`              | `Release` | `Release`: compile with `-O3`; `Debug`: compile with `-g -O0` for debugging       |
+| `CMAKE_OSX_ARCHITECTURES`       | (host)    | macOS universal build, e.g. `-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"`            |
+| `CMAKE_C_COMPILER`              | (default) | Cross-compile, e.g. `-DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc` (Windows)          |
 
 
 
