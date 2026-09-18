@@ -4,14 +4,14 @@ An efficient tool for raw genomic FASTQ sequencing data compression and decompre
 
 
 __PROGRAM: Qzip__<br>
-__VERSION: 1.0.0-beta.9__<br>
+__VERSION: 1.0.0-beta.10__<br>
 __PLATFORM: Linux / macOS / Windows__<br>
 __ARCHITECTURE: x86_64 / arm64__<br>
 __COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: xiaolong zhang__<br>
 __EMAIL: xiaolongzhang2015@163.com__<br>
 __DATE:   2024-09-09__<br>
-__UPDATE: 2026-08-22__<br>
+__UPDATE: 2026-09-18__<br>
 __DEPENDENCE__<br>
 * __cmake (>= 3.16) and a C99 compiler (gcc / clang)__<br>
 * __pthread__<br>
