@@ -274,6 +274,8 @@ order 16 1.642077078741e+00 1.880646559385e+00 -7.163251990378e-02 -1.6398364011
 
 Only the numbers change when a model is refitted. `config/universal.txt` is fitted on the platform samples the measurement tool works from, and `tools/quality_complex/README_EN.md` documents the measurement, the fit, and the command that regenerates the file.
 
+A released archive ships this file beside the binary (`qzip-<os>-<arch>/config/universal.txt`), so `qzip` run from the directory the archive unpacks to needs no `--complex`; a build from source finds it at `config/universal.txt` in the repository.
+
 
 ## 3.2 Command: `decode`
 
