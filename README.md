@@ -129,7 +129,7 @@ Usage: qzip encode [options]
 |-------------------|----------|---------------------------------------------|
 | `-t`, `--thread`  | INT      | Number of threads to use (default: `1`)     |
 | `-v`, `--verbose` | —        | Show detailed encoding progress information |
-| `-c`, `--complex` | FILE     | Quality complexity model file (default: `config/universal.txt`) |
+| `-c`, `--complex` | FILE     | Quality complexity model file (default: `config/universal.txt` beside the `qzip` binary, else in the current directory) |
 
 ### 3.1.2 Option Details
 
@@ -253,7 +253,7 @@ When enabled, Qzip prints detailed progress information during the encoding proc
 
 The config file of the **quality complexity model**. Every block of quality scores is coded either with PPM at some order or with the plain range coder, and this file holds the fitted coefficients that make that choice. Name a model fitted for the sequencing platform being compressed to code its quality profiles the way that platform's data calls for.
 
-**Default:** `config/universal.txt`, a path relative to the directory `qzip` is run from — so running from the repository root needs no `--complex`. A model fitted for one platform is selected by naming its file:
+**Default:** `config/universal.txt`, looked for in the directory the `qzip` binary itself sits in and then in the directory `qzip` is started from — a released archive and a build from source both carry the model next to the binary, so neither needs the option wherever it is started. A file named with `--complex` is taken exactly as written, relative to the directory you run `qzip` from. A model fitted for one platform is selected by naming its file:
 
 ```bash
 qzip encode --list fastq_list.txt --output sample.qz --complex config/bgi.txt
@@ -274,7 +274,7 @@ order 16 1.642077078741e+00 1.880646559385e+00 -7.163251990378e-02 -1.6398364011
 
 Only the numbers change when a model is refitted. `config/universal.txt` is fitted on the platform samples the measurement tool works from, and `tools/quality_complex/README_EN.md` documents the measurement, the fit, and the command that regenerates the file.
 
-A released archive ships this file beside the binary (`qzip-<os>-<arch>/config/universal.txt`), so `qzip` run from the directory the archive unpacks to needs no `--complex`; a build from source finds it at `config/universal.txt` in the repository.
+A released archive ships this file beside the binary (`qzip-<os>-<arch>/config/universal.txt`), which is the first place the encoder looks, so `qzip` unpacks ready to run from any directory. A build from source copies the whole `config/` directory to `build/config/` at build time, so `build/qzip` is in the same position, and `cmake --build build` is all a regenerated model needs.
 
 
 ## 3.2 Command: `decode`
