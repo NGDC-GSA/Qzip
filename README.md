@@ -4,14 +4,14 @@ An efficient tool for raw genomic FASTQ sequencing data compression and decompre
 
 
 __PROGRAM: Qzip__<br>
-__VERSION: 1.0.0-beta.10__<br>
+__VERSION: 1.0.0-beta.11__<br>
 __PLATFORM: Linux / macOS / Windows__<br>
 __ARCHITECTURE: x86_64 / arm64__<br>
 __COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: xiaolong zhang__<br>
 __EMAIL: xiaolongzhang2015@163.com__<br>
 __DATE:   2024-09-09__<br>
-__UPDATE: 2026-09-18__<br>
+__UPDATE: 2026-09-28__<br>
 __DEPENDENCE__<br>
 * __cmake (>= 3.16) and a C99 compiler (gcc / clang)__<br>
 * __pthread__<br>
@@ -59,6 +59,12 @@ rm -rf build
 
 The compiled binary `qzip` will be generated in the `build/` directory.
 
+The quality complexity model's own tooling is built with it and lands in
+`build/tools/`: `quality_order_block` measures the order every block of a fastq
+file is best coded at, and `complex_model.py` fits `config/universal.txt` from a
+corpus of those measurements. Neither is part of the `qzip` binary — see
+`tools/quality_complex/README_EN.md`.
+
 ## 2.3 Build Options
 
 | Option                          | Default   | Description                                                                        |
@@ -83,7 +89,7 @@ Usage: qzip <command> [options]
 | `decode`   | Decompress a QZ file back to FASTQ file(s)                         |
 | `build`    | Build reference genome index files for reference-based compression |
 | `info`     | Display header information of a QZ file                            |
-| `validate` | Validate the integrity of a QZ file                                |
+| `valid`    | Validate the integrity of a QZ file                                |
 | `view`     | Quickly view reads from a QZ file (under development)              |
 
 
@@ -123,6 +129,7 @@ Usage: qzip encode [options]
 |-------------------|----------|---------------------------------------------|
 | `-t`, `--thread`  | INT      | Number of threads to use (default: `1`)     |
 | `-v`, `--verbose` | —        | Show detailed encoding progress information |
+| `-c`, `--complex` | FILE     | Quality complexity model file (default: `config/universal.txt`) |
 
 ### 3.1.2 Option Details
 
@@ -240,6 +247,32 @@ When enabled, Qzip prints detailed progress information during the encoding proc
 
 **Default:** Disabled (quiet mode)
 
+---
+
+#### \[-c \| --complex]
+
+The config file of the **quality complexity model**. Every block of quality scores is coded either with PPM at some order or with the plain range coder, and this file holds the fitted coefficients that make that choice. Name a model fitted for the sequencing platform being compressed to code its quality profiles the way that platform's data calls for.
+
+**Default:** `config/universal.txt`, a path relative to the directory `qzip` is run from — so running from the repository root needs no `--complex`. A model fitted for one platform is selected by naming its file:
+
+```bash
+qzip encode --list fastq_list.txt --output sample.qz --complex config/bgi.txt
+```
+
+**The file is the whole model.** It is read once before encoding starts, every number in it is required, and a file that is missing or malformed stops the run, naming the file and the line. There is no model compiled in to fall back to, so a wrong path or a truncated file is an error rather than a silently different choice.
+
+The format is plain text: one keyword per line, blank lines and `#` comments ignored. It carries the four features the analyser measures, their mean and standard deviation, and one row per order from 2 to 16 — an intercept and one coefficient per feature:
+
+```
+feature h1 pd2 pd16 lag16
+mean 1.393014214012e+00 8.882747944237e-02 8.941839125164e-03 6.197553858471e-01
+std 1.267194490272e+00 4.566011639536e-02 6.041526531872e-03 2.888582751925e-01
+order 2 1.355976254912e+00 1.290315428136e+00 -1.906038741098e-02 3.380905604260e-04 2.218224731162e-02
+...
+order 16 1.642077078741e+00 1.880646559385e+00 -7.163251990378e-02 -1.639836401130e-02 1.875553299121e-01
+```
+
+Only the numbers change when a model is refitted. `config/universal.txt` is fitted on the platform samples the measurement tool works from, and `tools/quality_complex/README_EN.md` documents the measurement, the fit, and the command that regenerates the file.
 
 
 ## 3.2 Command: `decode`
@@ -418,19 +451,19 @@ qzip info --input sample.qz
 
 
 
-## 3.5 Command: `validate`
+## 3.5 Command: `valid`
 
 Validate the structural integrity and (optionally) the data content consistency of a QZ file.
 
 ```
-Usage: qzip validate [options]
+Usage: qzip valid [options]
 ```
 
 ### 3.5.1 Options Summary
 
 | Option           | Argument | Description                                                                     |
 |------------------|----------|---------------------------------------------------------------------------------|
-| `-h`, `--help`   | —        | Print help information for the validate command                                 |
+| `-h`, `--help`   | —        | Print help information for the `valid` command                                  |
 | `-i`, `--input`  | FILE     | **\[Required]** Input compressed QZ file                                        |
 | `-r`, `--ref`    | FILE     | Prefix of the reference genome index (.pac) — required only for reference-based |
 | `-d`, `--deep`   | —        | Perform deep data content consistency check (default: structural check only)    |
@@ -440,7 +473,7 @@ Usage: qzip validate [options]
 
 #### \[-h \| --help]
 
-Print the help information for the validate command and exit.
+Print the help information for the `valid` command and exit.
 
 ---
 
@@ -450,7 +483,7 @@ The path of the QZ file to validate.
 
 **Example:**
 ```
-qzip validate --input sample.qz
+qzip valid --input sample.qz
 ```
 
 ---
@@ -598,20 +631,20 @@ qzip info --input sample.qz
 ```
 
 
-## 4.5 Command: `validate`
+## 4.5 Command: `valid`
 
 ### 4.5.1 Quick Data Block Check
 
 ```bash
 # add option '--ref GRCh38.fa' for Reference-based QZ file
-qzip validate --input sample.qz
+qzip valid --input sample.qz
 ```
 
 ### 4.5.2 Deep Content Check
 
 ```bash
 # add option '--ref GRCh38.fa' for Reference-based QZ file
-qzip validate --input sample.qz --deep --thread 4
+qzip valid --input sample.qz --deep --thread 4
 ```
 
 
@@ -638,7 +671,7 @@ The compressed output file uses the `.qz` extension. A QZ file contains:
 
 ## 5.3 QZ File Integrity
 
-After compression, you can verify the integrity of a QZ file using the `validate` command. Qzip stores internal checksums for each data block, enabling detection of file corruption or incomplete transfers.
+After compression, you can verify the integrity of a QZ file using the `valid` command. Qzip stores internal checksums for each data block, enabling detection of file corruption or incomplete transfers.
 
 
 
