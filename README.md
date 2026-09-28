@@ -40,6 +40,7 @@ statically by CMake, so no system packages are needed:
 * **zlib-ng** (`external/zlibng`) — gzip-compressed file I/O
 * **bzip2** (`external/bzip2`) — BZ2 compressed file support
 * **libdeflate** (`external/libdeflate`) — fast gzip compression
+* **libsais** (`external/libsais`) — fast BWT conversion
 * **pthread** — required for multi-threading support
 
 ## 2.2 Compilation
