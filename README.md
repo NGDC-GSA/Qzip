@@ -4,14 +4,14 @@ An efficient tool for raw genomic FASTQ sequencing data compression and decompre
 
 
 __PROGRAM: Qzip__<br>
-__VERSION: 1.1.1-beta.1__<br>
+__VERSION: 1.1.1__<br>
 __PLATFORM: Linux / macOS / Windows__<br>
 __ARCHITECTURE: x86_64 / arm64__<br>
 __COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: xiaolong zhang__<br>
 __EMAIL: xiaolongzhang2015@163.com__<br>
 __DATE:   2024-09-09__<br>
-__UPDATE: 2026-11-06__<br>
+__UPDATE: 2026-11-16__<br>
 __DEPENDENCE__<br>
 * __cmake (>= 3.16) and a C99 compiler (gcc / clang)__<br>
 * __pthread__<br>
@@ -20,25 +20,14 @@ __DEPENDENCE__<br>
 
 # 1. Description
 
-> **Experimental release — compression testing only. Do not use in production.**
-> The code, command-line parameters and archive format are changing frequently.
-> Keep original FASTQ files, retain the exact Qzip executable used for each test,
-> and independently compare the decompressed data before relying on a result.
->
-> **Archive compatibility:** Qzip **1.1.1-beta.1 is incompatible with archives
-> produced by previous releases, including 1.1.0-beta.x**. Use the matching older
-> version to decode those archives, then recompress the FASTQ data if needed.
-> Compatibility between development builds is not guaranteed.
+Qzip is a high-performance compression tool specifically designed for raw genomic FASTQ sequencing data.<br>
+It supports both **reference-free** and **reference-based** compression algorithms, allowing users to balance between compression ratio and computational resources.
+Qzip also provides utilities for **validating** the integrity of compressed files, **viewing** file header information, and **building** reference genome indices.
 
-* Qzip is a high-performance compression tool specifically designed for raw genomic FASTQ sequencing data.<br>
-* It supports both **reference-free** and **reference-based** compression algorithms, allowing users to balance between compression ratio and computational resources.
-* For reference-free compression, two sequence encoding methods are provided: **BWT-BCM** (higher compression rate, more memory) and **BIT2** (faster, less memory).
-* Numeric read-name fields use **LEB128-BWT-BCM** for absolute integers, **delta BWT-BCM** for ordinary deltas in **0–253** with sparse exceptions stored separately, and **delta RLE** for long runs. Fixed-width fields preserve leading zeros.
-* **PartDigit** read-name fields combine a constant prefix with a fixed-width numeric suffix, such as `@V300012402L4C001R` + `018883621` in BGI titles. The suffix reuses numeric encoding, including delta compression, while preserving leading zeros. Candidates are identified from the file's first name and validated in each block; fields that fail validation use the existing string encoders.
-* Read-name sequence-index fields use dictionary RLE/Huffman encoding with a **254-key threshold**. Once the threshold is reached, any subsequent record makes that field use string Huffman encoding.
-* For reference-based compression, Qzip leverages a pre-built reference genome index to achieve superior compression ratios by aligning reads to the reference.
-* Qzip also provides utilities for **validating** the integrity of compressed files, **viewing** file header information, and **building** reference genome indices.
-
+> **Archive compatibility.** Qzip 1.1.1 uses the streaming archive format
+> introduced in 1.1.1-beta.1. To recover FASTQ data from 1.1.0-beta.x or
+> earlier archives, decode them with the Qzip version that created them.
+> You can then recompress the FASTQ files with 1.1.1.
 
 
 # 2. Building
@@ -122,7 +111,7 @@ Usage: qzip encode [options]
 |------------------|----------|--------------------------------------------------------|
 | `-h`, `--help`   | —        | Print help information for the encode command          |
 | `-l`, `--list`   | FILE     | **\[Required]** List of FASTQ file paths, one per line |
-| `-o`, `--output` | FILE     | **\[Required]** QZ file path or `-` for standard output         |
+| `-o`, `--output` | FILE     | Optional QZ file path; defaults to standard output |
 
 ##### Reference-free Options (default)
 
@@ -170,7 +159,7 @@ Each path can be a regular file or a named FIFO. Qzip opens each input once, in 
 
 #### \[-o \| --output]
 
-The path of the output compressed QZ file, or `-` to write the archive to standard output. The recommended file extension is `.qz`. Progress and diagnostics go to standard error.
+Optionally specify the path of the output compressed QZ file. If `-o`/`--output` is omitted, Qzip writes the archive to standard output. When provided, the option requires an output file path. The recommended file extension is `.qz`. Progress, statistics and diagnostics go to standard error.
 
 **Example:**
 ```
@@ -178,7 +167,7 @@ The path of the output compressed QZ file, or `-` to write the archive to standa
 ```
 
 ```sh
-qzip encode -l fastq_list.txt -o - > sample.qz 2> encode.log
+qzip encode -l fastq_list.txt > sample.qz 2> encode.log
 ```
 
 ---
@@ -321,7 +310,7 @@ Usage: qzip decode [options]
 |------------------|----------|---------------------------------------------------------------------------------|
 | `-h`, `--help`   | —        | Print help information for the decode command                                   |
 | `-i`, `--input`  | FILE     | **\[Required]** Input compressed QZ file                                        |
-| `-o`, `--output` | DIR      | **\[Required]** Output directory for decoded FASTQ file(s)                      |
+| `-d`, `--dir`    | DIR      | **\[Required]** Existing output directory for decoded FASTQ file(s)             |
 | `-r`, `--ref`    | FILE     | Prefix of the reference genome index (.pac) — required only for reference-based |
 | `-t`, `--thread` | INT      | Number of threads to use (default: `1`)                                         |
 | `-z`, `--gzip`   | —        | Output gzip-compressed FASTQ instead of plain FASTQ                             |
@@ -345,16 +334,16 @@ The path of the input compressed QZ file to be decompressed.
 
 ---
 
-#### \[-o \| --output]
+#### \[-d \| --dir]
 
-The output directory where the decoded FASTQ file(s) will be written. The output file name(s) are derived from the original file name(s) stored inside the QZ archive.
+The required output directory where the decoded FASTQ file(s) will be written. The output file name(s) are derived from the original file name(s) stored inside the QZ archive. Decoding always writes each member to its own file in this directory.
 
 **Example:**
 ```
---output /home/user/data/decoded/
+--dir /home/user/data/decoded/
 ```
 
-**Note:** The directory must exist before running the decode command.
+**Note:** The directory must exist before running the decode command. Use `-d`/`--dir`; decode no longer accepts `-o`/`--output`.
 
 ---
 
@@ -366,7 +355,7 @@ Specifies the prefix of the reference genome index file (`.pac`) used during dec
 
 **Example:**
 ```bash
-qzip decode --input sample.qz --output ./out/ --ref GRCh38.fa
+qzip decode --input sample.qz --dir ./out/ --ref GRCh38.fa
 ```
 
 **Note:** If you omit `--ref` for a reference-based compressed file, Qzip cannot properly reconstruct the original sequences and will report an error.
@@ -389,7 +378,7 @@ When enabled, the decoded output will be written as gzip-compressed FASTQ files 
 
 **Example:**
 ```
-qzip decode --input sample.qz --output ./out/ --gzip
+qzip decode --input sample.qz --dir ./out/ --gzip
 ```
 
 
@@ -628,19 +617,19 @@ qzip encode --list fastq_list.txt --output sample.qz --mode BWT --size 16 --thre
 ### 4.2.1 Decompress to Plain FASTQ
 
 ```bash
-qzip decode --input sample.qz --output ./decoded/ --thread 8
+qzip decode --input sample.qz --dir ./decoded/ --thread 8
 ```
 
 ### 4.2.2 Decompress to Gzipped FASTQ
 
 ```bash
-qzip decode --input sample.qz --output ./decoded/ --gzip --thread 8
+qzip decode --input sample.qz --dir ./decoded/ --gzip --thread 8
 ```
 
 ### 4.2.3 Decompress Reference-based QZ File
 
 ```bash
-qzip decode --input sample.qz --output ./decoded/ --ref GRCh38.fa --thread 8
+qzip decode --input sample.qz --dir ./decoded/ --ref GRCh38.fa --thread 8
 ```
 
 
@@ -708,8 +697,9 @@ END carries the final member statistics. Encoding writes headers once; decoding,
 validation, and `info` read members sequentially through END and check final
 statistics. These QZ paths work with named FIFOs without seeking. The `!qzip`
 magic and existing software version field are retained. FASTQ inputs are now opened
-once, and `encode --output -` supports binary stdout. Direct stdin input is not
-implemented; use named FIFO paths for streamed input.
+once, and `encode` writes binary QZ data to stdout by default; use `--output FILE`
+to write to a file. Direct stdin input is not implemented; use named FIFO paths
+for streamed input.
 
 ## 5.3 QZ File Integrity
 
